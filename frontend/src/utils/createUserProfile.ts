@@ -1,5 +1,4 @@
 import { getFirestore, doc, setDoc } from 'firebase/firestore';
-import { auth } from '../firebase';
 
 const db = getFirestore();
 

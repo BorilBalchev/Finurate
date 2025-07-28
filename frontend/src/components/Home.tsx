@@ -1,19 +1,4 @@
-// import React from 'react'
-
-// const Home = () => {
-//     return(
-//         <div>
-//             This is the home page
-//         </div>
-//     )
-// }
-
-// export default Home
-
-import React from 'react';
 import { Box, Typography, Card, CardContent, Button } from '@mui/material';
-import Grid from '@mui/material/Grid';
-// import FinchIcon from "./../assets/Finch2.png";
 import FinchIcon from "./../assets/Logo4.png";
 import AnalysisIcon from "./../assets/data.png";
 import PortfolioIcon from "./../assets/data-analysis-2.png";
@@ -23,12 +8,12 @@ import { auth, googleProvider } from '../firebase';
 import { signInWithPopup } from 'firebase/auth';
 import { createUserProfile } from '../utils/createUserProfile';
 
+import { useNavigate } from 'react-router-dom';
 
+
+// const navigate = useNavigate();
 
 // import images
-
-const frontColor = "#eaecef";
-const background = "#181a1f";
 
 const cards = [
     {
@@ -48,18 +33,18 @@ const cards = [
     }
 ]
 
-const handleGoogleLogin = async () => {
-    try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const user = result.user;
-      await createUserProfile(user);
-    //   console.log("User signed in!");
-    } catch (error) {
-      console.error("Google Sign-In error:", error);
-    }
-};
-
 const Home = () => {
+    const navigate = useNavigate();
+    const handleGoogleLogin = async () => {
+        try {
+        const result = await signInWithPopup(auth, googleProvider);
+        const user = result.user;
+        navigate('/portfolio');
+        await createUserProfile(user);
+        } catch (error) {
+        console.error("Google Sign-In error:", error);
+        }
+    };
   return (
     <Box
       sx={{

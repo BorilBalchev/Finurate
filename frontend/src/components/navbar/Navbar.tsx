@@ -23,6 +23,7 @@ import ExpandMore from '@mui/icons-material/ExpandMore';
 import Collapse from '@mui/material/Collapse';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
+import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
 
 import { Avatar, Menu, MenuItem } from '@mui/material';
 import { useState } from 'react';
@@ -37,19 +38,20 @@ const border = '#3a3f44';
 
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
-}>(({ theme }) => ({
+}>(({ theme, open }) => ({
   flexGrow: 1,
   padding: theme.spacing(3),
-  transition: theme.transitions.create('margin', {
+  transition: theme.transitions.create(['margin', 'width'], {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
   }),
   marginLeft: `-${drawerWidth}px`,
+  width: open ? `calc(100% - ${drawerWidth}px)` : '100%',
   variants: [
     {
       props: ({ open }) => open,
       style: {
-        transition: theme.transitions.create('margin', {
+        transition: theme.transitions.create(['margin', 'width'], {
           easing: theme.transitions.easing.easeOut,
           duration: theme.transitions.duration.enteringScreen,
         }),
@@ -74,7 +76,7 @@ const AppBar = styled(MuiAppBar, {
   shouldForwardProp: (prop) => prop !== 'open',
 })<AppBarProps>(({ theme }) => ({
   transition: theme.transitions.create(['margin', 'width'], {
-    easing: theme.transitions.easing.sharp,
+    easing: theme.transitions.easing.easeIn,
     duration: theme.transitions.duration.leavingScreen,
   }),
   variants: [
@@ -113,12 +115,7 @@ export default function Navbar({content}: NavbarProps) {
     setOpen(false);
   };
 
-  const [portfolioOpen, setPortfolioOpen] = React.useState(false);
   const [manageOpen, setManageOpen] = React.useState(false);
-
-  const handlePortfolioClick = () => {
-    setPortfolioOpen(!portfolioOpen);
-  };
 
   const handleManageClick = () => {
     setManageOpen(!manageOpen);
@@ -202,7 +199,7 @@ export default function Navbar({content}: NavbarProps) {
         anchor="left"
         open={open}
       >
-        <DrawerHeader>
+        <DrawerHeader sx={{borderBottom: '10px solid ' + border, marginTop: '10px'}}>
           <Typography variant='h6' noWrap component="div" sx={{mr: 14, fontFamily: 'Montserrat, sans-serif', fontWeight: 600, color: fontColor}}>
             Menu
           </Typography>
@@ -212,50 +209,39 @@ export default function Navbar({content}: NavbarProps) {
         </DrawerHeader>
         <Divider />
         <List>
-            {/* Portfolio */}
-            <ListItemButton onClick={handlePortfolioClick} sx={{borderBottom: '10px solid ' + border}}>
+            <ListItemButton component={Link} to="/portfolio" sx={{marginTop: "-10px"}} >
                 <ListItemIcon sx={{color: fontColor}}>
-                {/* <InboxIcon /> */}
                 <AccountBalanceWalletIcon/>
                 </ListItemIcon>
                 <ListItemText primary="Portfolio" />
-                {portfolioOpen ? <ExpandLess /> : <ExpandMore />}
             </ListItemButton>
-            <Collapse in={portfolioOpen} timeout="auto" unmountOnExit>
-                <List component="div" disablePadding>
-                <ListItemButton sx={{ pl: 4, color: fontColor, '&:hover': { backgroundColor: '#333' }}} component={Link} to="/portfolio/overview">
-                    <ListItemText primary="Overview" sx={{ml:5}} />
-                </ListItemButton>
-                <ListItemButton sx={{ pl: 4, color: fontColor, '&:hover': { backgroundColor: '#333' }}} component={Link} to="/portfolio/assets">
-                    <ListItemText primary="Assets" sx={{ml:5}} />
-                </ListItemButton>
-                <ListItemButton sx={{ pl: 4, color: fontColor, '&:hover': { backgroundColor: '#333' }}} component={Link} to="/portfolio/news">
-                    <ListItemText primary="News" sx={{ml:5}} />
-                </ListItemButton>
-                </List>
-            </Collapse>
-
-            {/* Manage */}
-            <ListItemButton onClick={handleManageClick}>
+            
+            <ListItemButton onClick={handleManageClick} sx={{borderTop: '10px solid ' + border}}>
                 <ListItemIcon sx={{color: fontColor}}>
                 <AddShoppingCartIcon />
                 </ListItemIcon>
-                <ListItemText primary="Manage" />
+                <ListItemText primary="Add Assets" />
                 {manageOpen ? <ExpandLess /> : <ExpandMore />}
             </ListItemButton>
             <Collapse in={manageOpen} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding>
-                <ListItemButton sx={{ pl: 4, color: fontColor, '&:hover': { backgroundColor: '#333' }}} component={Link} to="/manage/stocks">
+                <ListItemButton sx={{ pl: 4, color: fontColor, '&:hover': { backgroundColor: '#333' }}} component={Link} to="/add/stocks">
                     <ListItemText primary="Stocks" sx={{ml:5}} />
                 </ListItemButton>
-                <ListItemButton sx={{ pl: 4, color: fontColor, '&:hover': { backgroundColor: '#333' }}} component={Link} to="/manage/crypto">
+                <ListItemButton sx={{ pl: 4, color: fontColor, '&:hover': { backgroundColor: '#333' }}} component={Link} to="/add/crypto">
                     <ListItemText primary="Crypto" sx={{ml:5}} />
                 </ListItemButton>
-                <ListItemButton sx={{ pl: 4, color: fontColor, '&:hover': { backgroundColor: '#333' }}} component={Link} to="/manage/commodities">
+                <ListItemButton sx={{ pl: 4, color: fontColor, '&:hover': { backgroundColor: '#333' }}} component={Link} to="/add/commodities">
                     <ListItemText primary="Commodities" sx={{ml:5}} />
                 </ListItemButton>
                 </List>
             </Collapse>
+            <ListItemButton component={Link} to="/ai" sx={{borderTop: '10px solid ' + border}}>
+                <ListItemIcon sx={{color: fontColor}}>
+                <TipsAndUpdatesIcon/>
+                </ListItemIcon>
+                <ListItemText primary="AI Assistant" />
+            </ListItemButton>
         </List>
       </Drawer>
       <Main open={open}>

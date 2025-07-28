@@ -22,4 +22,11 @@ yarn-debug.log*
 yarn-error.log*
 
 # Backend for now
-/backend
+/backend/env
+/backend/db.sqlite3
+/backend/test.py
+
+/backend/api/__pycache__
+/backend/crud/__pycache__
+
+**/migrations

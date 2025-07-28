@@ -1,16 +1,14 @@
-import { useState, type ReactNode } from 'react'
-import {Routes, Route, Outlet, Navigate} from 'react-router-dom'
+import { type ReactNode } from 'react'
+import {Routes, Route, Navigate} from 'react-router-dom'
 import './App.css'
 import Home from './components/Home'
-import Login from './components/Login'
-import Signup from './components/Signup'
 import Portfolio from './components/Portfolio'
-import Manage from './components/Manage'
 import Asset from './components/Asset'
-import Delete from './components/Delete'
-import Create from './components/Create'
-import Edit from './components/Edit'
 import LoggedInLayout from './components/layouts/LoggedInLayout'
+
+import Stocks from './components/Stocks'
+import Crypto from './components/Crypto'
+import Commodities from './components/Commodities'
 
 import { createTheme, CssBaseline, ThemeProvider } from '@mui/material'
 
@@ -35,7 +33,7 @@ const darkTheme = createTheme({
   palette: {
     mode: 'dark',
     primary: {
-      main: '#00bfa5', // teal for accent
+      main: '#00bfa5',
     },
     background: {
       default: '#121212',
@@ -59,17 +57,17 @@ function App() {
     <>
       <Routes>
         <Route path="/" element={<Home/>}/>
-        {/* <Route path="/login" element={<Login/>}/>/ */}
-        {/* <Route path="/signup" element={<Signup/>}/> */}
 
         {/* Routes with Navbar */}
         <Route element={<PrivateRoute><LoggedInLayout/></PrivateRoute>}>
             <Route path="/portfolio" element={<Portfolio/>}/>
             <Route path="/portfolio/asset/:id" element={<Asset/>}/>
-            <Route path="/manage" element={<Manage/>}/>
-            <Route path="/manage/create" element={<Create/>}/>
-            <Route path="/manage/edit/:id" element={<Edit/>}/>
-            <Route path="/manage/delete/:id" element={<Delete/>}/>
+            <Route path="/portfolio/news" element={<Asset/>}/>
+            <Route path="/add/stocks" element={<Stocks/>}/>
+            <Route path="/add/crypto" element={<Crypto/>}/>
+            <Route path="/add/commodities" element={<Commodities/>}/>
+            
+            <Route path="/asset" element={<Asset />} />
         </Route>
       </Routes>
     </>
