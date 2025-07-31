@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { db, auth } from '../firebase';
+import { db, auth } from '../utils/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
 import { useNavigate } from 'react-router-dom';
@@ -13,8 +13,12 @@ import {
   Typography,
   Box,
   Autocomplete,
-  TextField
+  TextField,
+  Button,
+  CircularProgress
 } from "@mui/material";
+
+import AutorenewIcon from '@mui/icons-material/Autorenew';
 
 import { LineChart } from '@mui/x-charts/LineChart';
 import { PieChart, RadarChart } from '@mui/x-charts';
@@ -30,47 +34,28 @@ interface Asset {
 interface ValuedStock extends Asset {
     price: number;
     value: number;
+    change: number;
 }
 
 
 
 const Portfolio = () => {
-    const [stocks, setStocks] = useState<ValuedStock[]>([]);
+    const [assets, setAssets] = useState<ValuedStock[]>([]);
     const [total, setTotal] = useState<number>(0);
     const [portfolioHistory, setPortfolioHistory] = useState<{ date: string; value: number }[]>([]);
     const [selectedTicker, setSelectedTicker] = useState<string | null>(null);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    // const [display, setDisplay] = useState(false)
-    // const [metrics, setMetrics] = useState<{ metric: string; value: number}[] >([]);
     const [metrics, setMetrics] = useState<Record<string, number>>({});
-
+    const [valueChange, setValueChange] = useState<Record<string, number>>({});
+    const [refresh, setRefresh] = useState(false);
+    const [spinning, setSpinning] = useState(false);
 
     const navigate = useNavigate()
     const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
+    // interval for displaying x-axis labels
     const SIX_MONTHS = 6;
-
-    // const createTickLabelInterval = (dates: string[]) => {
-    //     let lastShownDate: dayjs.Dayjs | null = null;
-
-    //     return (value: string, index: number) => {
-    //         const currentDate = dayjs(value);
-
-    //         if (index === 0) {
-    //         lastShownDate = currentDate;
-    //         return true; // always show first label
-    //         }
-
-    //         if (!lastShownDate || currentDate.diff(lastShownDate, 'month') >= SIX_MONTHS) {
-    //         lastShownDate = currentDate;
-    //         return true;
-    //         }
-    //         return false;
-    //     };
-    // };
-
-
     const createTickLabelInterval = () => {
         let lastShownDate: dayjs.Dayjs | null = null;
 
@@ -79,7 +64,7 @@ const Portfolio = () => {
 
             if (index === 0) {
             lastShownDate = currentDate;
-            return true; // always show first label
+            return true;
             }
 
             if (!lastShownDate || currentDate.diff(lastShownDate, 'month') >= SIX_MONTHS) {
@@ -89,6 +74,12 @@ const Portfolio = () => {
             return false;
         };
     };
+
+    const handleRefresh = async () => {
+        setSpinning(true);
+        setRefresh(!refresh);
+        setTimeout(() => setSpinning(false), 1000);
+    }
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, async (user) => {
@@ -100,22 +91,9 @@ const Portfolio = () => {
                 const snapshot = await getDocs(portfolioRef);
                 const fetched = snapshot.docs.map((doc) => doc.data() as Asset);
 
-                console.log('PRef:', portfolioRef)
-                console.log("Snap:", snapshot)
-                console.log("Fetched:", fetched)
-
-                // if (fetched.length > 0) {
-                //     // setLoading(true)
-                // }
-                // else {
-                //     setLoading(false)
-                // }
-
                 if (fetched.length === 0){
                     setLoading(false)
                 }
-
-                // console.log(display)
 
                 if (fetched.length > 0) {
                     try {
@@ -126,12 +104,13 @@ const Portfolio = () => {
                         });
 
                         const data = await res.json();
-                        setStocks(data.assets);
+                        data.assets.sort((a: ValuedStock, b: ValuedStock) => b.value - a.value);
+                        setAssets(data.assets);
                         setTotal(data.total_value);
                         setPortfolioHistory(data.historical_portfolio_value);
                         setMetrics(data.metrics);
-                        // console.log(stocks)
-                        // console.log(data.metrics);
+                        setValueChange(data.value_change)
+
                     } catch (error) {
                         console.error("Error fetching prices:", error);
                         setError("Failed to load portfolio data.");
@@ -143,10 +122,7 @@ const Portfolio = () => {
 
             await fetchAndUpdatePrices();
 
-            const intervalId = setInterval(fetchAndUpdatePrices, 30000);
-
             return () => {
-                clearInterval(intervalId);
                 unsubscribe();
             }
 
@@ -156,7 +132,7 @@ const Portfolio = () => {
             unsubscribe();
         }
 
-    }, []);
+    }, [refresh]);
 
 
     useEffect(() => {
@@ -171,17 +147,112 @@ const Portfolio = () => {
         }
     }, [selectedTicker]);
 
-    if (loading) return <div className="content">Loading portfolio...</div>;
+    if (loading) return <div className="content" style={{width: '100vw', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: -100}}><CircularProgress/></div>;
     if (error) return <div className="content">{error}</div>;
 
     return (
 
         <Box>
             {/* Main title + value */}
-            <Typography variant="h4" gutterBottom>Your Portfolio</Typography>
-            <Typography variant="h6" gutterBottom>Total Value: ${total.toFixed(2)}</Typography>
+            <Typography variant="h4" gutterBottom sx={{textAlign: 'center'}}>Your Portfolio</Typography>
+
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                {/* Left Spacer */}
+                <Box sx={{ flex: 1 }} />
+
+                {/* Centered Price + Percent Change */}
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                    <Typography
+                    variant="h5"
+                    gutterBottom
+                    sx={{ textAlign: 'center', marginRight: 2, marginTop: 1.5 }}
+                    >
+                    ${total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                    </Typography>
+                    <Typography
+                    variant="h6"
+                    gutterBottom
+                    sx={{
+                        textAlign: 'center',
+                        color: valueChange['7D'] > 0 ? 'green' : 'red',
+                        marginTop: 1.5,
+                        marginRight: 1,
+                        marginLeft: 2,
+                    }}
+                    >
+                    {valueChange['7D']}% 7D
+                    </Typography>
+                    <Typography
+                    variant="h6"
+                    gutterBottom
+                    sx={{ textAlign: 'center', marginTop: 1.5, marginRight: 1 }}
+                    >
+                    /
+                    </Typography>
+                    <Typography
+                    variant="h6"
+                    gutterBottom
+                    sx={{
+                        textAlign: 'center',
+                        color: valueChange['30D'] > 0 ? 'green' : 'red',
+                        marginTop: 1.5,
+                        marginRight: 1,
+                    }}
+                    >
+                    {valueChange['30D']}% 30D
+                    </Typography>
+                    <Typography
+                    variant="h6"
+                    gutterBottom
+                    sx={{ textAlign: 'center', marginTop: 1.5, marginRight: 1 }}
+                    >
+                    /
+                    </Typography>
+                    <Typography
+                    variant="h6"
+                    gutterBottom
+                    sx={{
+                        textAlign: 'center',
+                        color: valueChange['1Y'] > 0 ? 'green' : 'red',
+                        marginTop: 1.5,
+                    }}
+                    >
+                    {valueChange['1Y']}% 1Y
+                    </Typography>
+                </Box>
+
+                {/* Refresh Button */}
+                <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
+                    <Button
+                    sx={{
+                        width: 150,
+                        height: 30,
+                        marginTop: 1.5,
+                        marginLeft: 4,
+                        backgroundColor: '#485569',
+                        color: 'whitesmoke',
+                    }}
+                    variant="contained"
+                    onClick={handleRefresh}
+                    startIcon={
+                        <AutorenewIcon
+                        sx={{
+                            animation: spinning ? 'spin 1s linear infinite' : 'none',
+                            '@keyframes spin': {
+                            from: { transform: 'rotate(0deg)' },
+                            to: { transform: 'rotate(360deg)' },
+                            },
+                        }}
+                        />
+                    }
+                    >
+                    Refresh
+                    </Button>
+                </Box>
+            </Box>
+
             
-            {/* Charts: Portfolio value + distribution + evaluation */}
+            {/* Charts: distribution + portfolio value + evaluation */}
             <Box sx={{
                 display: 'flex',
                 alignItems: 'center',
@@ -200,10 +271,10 @@ const Portfolio = () => {
                         </Typography>
                         <PieChart
                             series={[{
-                            data: stocks.map((stock) => ({
-                                id: stock.ticker,
-                                value: (stock.value / total) * 100,
-                                label: `${stock.ticker} (${((stock.value / total) * 100).toFixed(1)}%)`,
+                            data: assets.map((asset) => ({
+                                id: asset.ticker,
+                                value: (asset.value / total) * 100,
+                                label: `${asset.ticker} (${((asset.value / total) * 100).toFixed(1)}%)`,
                             })),
                             innerRadius: 50,
                             outerRadius: 100,
@@ -264,13 +335,11 @@ const Portfolio = () => {
                             return dateStr;
                         },
                         tickLabelStyle: {
-                            textAnchor: 'start',
                             fontSize: 12,
                             fill: '#fff',
-                            fontFamily: 'Arial, sans-serif',  // font family
+                            fontFamily: 'Arial, sans-serif',
                             fontWeight: 'bold',
                         },
-                        // tickLabelInterval: createTickLabelInterval(portfolioHistory.map(entry => entry.date)),
                         tickLabelInterval: createTickLabelInterval(),
                         }]}
                         yAxis={[{
@@ -283,10 +352,9 @@ const Portfolio = () => {
                             return `$${value}`;
                         },
                         tickLabelStyle: {
-                            // textAnchor: 'start',
                             fontSize: 12,
                             fill: '#fff',
-                            fontFamily: 'Arial, sans-serif',  // font family
+                            fontFamily: 'Arial, sans-serif',
                             fontWeight: 'bold',
                         },
                         }]}
@@ -311,7 +379,7 @@ const Portfolio = () => {
                 )}
             </Box>
             
-            {stocks.length === 0 ? (
+            {assets.length === 0 ? (
                 <Typography sx={{ mt: 4 }}>No assets in your portfolio.</Typography>
             ) : (
                 <Box>
@@ -327,25 +395,26 @@ const Portfolio = () => {
                         backgroundColor: 'transparent',
                     }}>
                     <Autocomplete
-                        options={stocks.map((stock) => `${stock.ticker} - ${stock.name}`)}
+                        options={assets.map((asset) => `${asset.ticker} - ${asset.name}`)}
                         sx={{ width: 250 }}
                         renderInput={(params) => (
                             <TextField {...params} label="Search for an asset" variant="outlined" />
                         )}
                         onChange={(_, value) => {
-                            const matched = stocks.find(
-                            (stock) => `${stock.ticker} - ${stock.name}` === value
+                            const matched = assets.find(
+                            (asset) => `${asset.ticker} - ${asset.name}` === value
                             );
                             setSelectedTicker(matched ? matched.ticker : null);
                         }}
                         onInputChange={(_, inputValue) => {
-                            const matched = stocks.find(
-                            (stock) => `${stock.ticker} - ${stock.name}` === inputValue
+                            const matched = assets.find(
+                            (asset) => `${asset.ticker} - ${asset.name}` === inputValue
                             );
                             setSelectedTicker(matched ? matched.ticker : null);
                         }}
                     />
                     </Box>
+                    {/* Asset containers */}
                     <Box sx={{
                             width: '100%',
                             maxWidth: '97vw',
@@ -356,17 +425,17 @@ const Portfolio = () => {
                             marginTop: 2,
                         }}
                     >
-                        {stocks.map((stock) => (
+                        {assets.map((asset) => (
                             <Box
-                                key={stock.ticker}
+                                key={asset.ticker}
                                 sx={{
                                     display: 'inline-block',
-                                    width: 300,
+                                    width: 330,
                                     marginRight: 2,
                                     verticalAlign: 'top',
                                 }}
                                 ref={(el: HTMLDivElement | null) => {
-                                    cardRefs.current[stock.ticker] = el;
+                                    cardRefs.current[asset.ticker] = el;
                                     return;
                                 }}
                                 tabIndex={-1}
@@ -374,30 +443,31 @@ const Portfolio = () => {
                                 <Card
                                     sx={{
                                         height: '100%',
-                                        border: selectedTicker === stock.ticker ? '2px solid #1976d2' : undefined,
-                                        boxShadow: selectedTicker === stock.ticker ? '0 0 10px #1976d2' : undefined,
+                                        border: selectedTicker === asset.ticker ? '2px solid #1976d2' : undefined,
+                                        boxShadow: selectedTicker === asset.ticker ? '0 0 10px #1976d2' : undefined,
                                         transition: 'box-shadow 0.3s, border 0.3s',
                                     }}
                                 >
-                                    <CardActionArea onClick={() => navigate(`/asset?ticker=${stock.ticker}`)} >
+                                    <CardActionArea onClick={() => navigate(`/asset?ticker=${asset.ticker}`)} >
                                         <CardContent>
-                                            <Typography variant="h5" component="div" mb={0.5}>
-                                                {stock.ticker}
-                                            </Typography>
+                                            <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                <Typography variant="h5" component="div" mb={0.5}>
+                                                    {asset.ticker}
+                                                </Typography>
+                                                <Typography sx={{ color: asset.change > 0 ? 'green' : 'red'}}>{asset.change}% 7D</Typography>
+                                            </Box>
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                                                 <Typography variant="subtitle2" color="text.secondary">
-                                                    {stock.name}
+                                                    {asset.name}
                                                 </Typography>
-                                                <Typography variant="subtitle2">{stock.shares} shares</Typography>
+                                                <Typography variant="subtitle2">{asset.shares.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 })} shares</Typography>
                                             </Box>
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                                {/* <Typography>Price: ${stock.price.toFixed(2)}</Typography>
-                                                <Typography>Value: ${stock.value.toFixed(2)}</Typography> */}
                                                 <Typography>
-                                                Price: ${typeof stock.price === 'number' ? stock.price.toFixed(2) : 'N/A'}
+                                                Price: ${typeof asset.price === 'number' ? asset.price.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'N/A'}
                                                 </Typography>
                                                 <Typography>
-                                                Value: ${typeof stock.value === 'number' ? stock.value.toFixed(2) : 'N/A'}
+                                                Value: ${typeof asset.value === 'number' ? asset.value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : 'N/A'}
                                                 </Typography>
                                             </Box>
                                         </CardContent>

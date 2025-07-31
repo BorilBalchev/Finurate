@@ -7,26 +7,39 @@ import json
 import pandas as pd
 import numpy as np
 import math
+import requests
+from datetime import datetime, timedelta
+from dotenv import load_dotenv
+import os
+from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 
-
+# Scales a portfolio metric to 0-100 range
 def scale_value(value, min_val, max_val):
     scaled = ((value - min_val) / (max_val - min_val)) * 100
-    # return scaled
     return max(0, min(scaled, 100))
+
+# Computes percent change
+def price_change(base, current):
+    change = current / base
+    percent_change = (change - 1) * 100
+    return(round(percent_change, 2))
 
 
 @csrf_exempt
 def portfolio_prices(request):
+    # only POST requests accepted
     if request.method != 'POST':
         return JsonResponse({'error': 'Only POST method allowed'}, status=405)
 
     try:
         data = json.loads(request.body)
         assets = data.get('assets', [])
+        timeFrame = data.get('timeFrame')
 
         tickers = []
         shares_map = {}
 
+        # extracting asset info
         for asset in assets:
             ticker = asset.get('ticker')
             name = asset.get('name')
@@ -38,20 +51,22 @@ def portfolio_prices(request):
 
         if not tickers:
             return JsonResponse({'error': 'No valid tickers provided'}, status=400)
-
-        prices_data = yf.download(tickers if len(tickers) > 1 else tickers[0], period="5y", interval='1d')
+        
+        # fetching historical technical data
+        prices_data = yf.download(tickers if len(tickers) > 1 else tickers[0], period="5y", interval='1d', auto_adjust=True)
 
         total_value = 0.0
         details = []
         asset_values = {}
         liquidity_scores = {}
-
         close_prices = prices_data['Close']
         volume_values = prices_data['Volume']
         weighted_values = pd.DataFrame()
+        weighted_list = []
 
         for ticker in tickers:
             try:
+                # extracting price and volume series
                 if isinstance(close_prices, pd.DataFrame) and ticker in close_prices.columns:
                     price_series = close_prices[ticker].dropna()
                     volume_series = volume_values[ticker].dropna()
@@ -63,6 +78,8 @@ def portfolio_prices(request):
                     raise ValueError("No price data available")
 
                 latest_price = price_series.iloc[-1]
+                base_price = price_series.iloc[-8]
+                change = price_change(base_price, latest_price)
                 shares, name = shares_map[ticker]
                 value = round(latest_price * shares, 2)
                 total_value += value
@@ -78,9 +95,12 @@ def portfolio_prices(request):
                     'price': round(latest_price, 2),
                     'shares': shares,
                     'value': value,
+                    'change': change
                 })
 
-                weighted_values[ticker] = price_series * shares
+                weighted_series = price_series * shares
+                weighted_series.name = ticker
+                weighted_list.append(weighted_series)
 
             except Exception as e:
                 details.append({
@@ -91,21 +111,37 @@ def portfolio_prices(request):
                     'value': 0.0,
                     'error': f"Failed to get price: {str(e)}"
                 })
-
+        
+        # constructing total portfolio value over over time
+        weighted_values = pd.concat(weighted_list, axis=1)
+        full_date_range = pd.date_range(
+            start=weighted_values.index.min(),
+            end=weighted_values.index.max(),
+            freq='D'
+        )
+        weighted_values = weighted_values.reindex(full_date_range)
+        weighted_values = weighted_values.ffill()
         portfolio_value_series = weighted_values.sum(axis=1).dropna()
+
+        # formatting
         historical_portfolio_value = [
             {'date': date.strftime('%Y-%m-%d'), 'value': round(value, 2)}
             for date, value in portfolio_value_series.items()
         ]
 
-        growth = (portfolio_value_series.iloc[-1] - portfolio_value_series.iloc[0]) / portfolio_value_series.iloc[0] * 100
-
-
+        # computing value change
+        current_price = total_value
+        value_change_7d = price_change(historical_portfolio_value[-8]['value'], current_price)
+        value_change_30d = price_change(historical_portfolio_value[-31]['value'], current_price)
+        value_change_1y = price_change(historical_portfolio_value[-366]['value'], current_price)
+        
+        # computing portfolio performance metrics
+        growth = (total_value - portfolio_value_series.iloc[0]) / portfolio_value_series.iloc[0] * 100
         daily_returns = portfolio_value_series.pct_change().dropna()
         volatility = daily_returns.std() * 100
         risk = daily_returns.std() * np.sqrt(252) * 100  
 
-        # Diversification Score using Herfindahl-Hirschman Index (HHI)
+        # computing portfolio diversification taking sectors into account
         sector_values = {}
         for ticker in tickers:
             value = asset_values[ticker]
@@ -116,9 +152,7 @@ def portfolio_prices(request):
 
         sector_proportions = np.array(list(sector_values.values())) / total_value
         sector_hhi = np.sum(sector_proportions ** 2)
-
         sector_div_score = round((1 - sector_hhi) * 100, 2)
-
 
         values = np.array([asset_values[t] for t in tickers])
         proportions = values / total_value
@@ -128,23 +162,18 @@ def portfolio_prices(request):
         overall_div_score = round((diversification_score + sector_div_score) / 2, 2)
 
 
-
-        # Liquidity Score (weighted average of average volume)
+        # computing liquidity
         liquidity_score = sum(
             (asset_values[t] / total_value) * liquidity_scores.get(t, 0)
             for t in tickers
         )
         liquidity_score = round(liquidity_score, 2)
 
+        # scaling
         scaled_growth = scale_value(round(growth, 2), 0, 300)
-        
         scaled_volatility = scale_value(round(volatility, 2), 0, 5)
-        
-        
         scaled_risk = scale_value(round(risk, 2), 0, 100)
-        
         scaled_liquidity = scale_value(math.log10(liquidity_score), 6, 11)
-
 
 
         response_data = {
@@ -157,6 +186,11 @@ def portfolio_prices(request):
                 'annualized_risk_percent': scaled_risk,
                 'diversification_score': overall_div_score,
                 'liquidity_score': scaled_liquidity,
+            },
+            'value_change': {
+                '7D': value_change_7d,
+                '30D': value_change_30d,
+                '1Y': value_change_1y,
             }
         }
 
@@ -164,7 +198,6 @@ def portfolio_prices(request):
 
     except Exception as e:
         return JsonResponse({'error': f'Internal Server Error: {str(e)}'}, status=500)
-
 
 
 def calculate_ema(series, period):
@@ -193,27 +226,24 @@ def calculate_macd(series, fast=12, slow=26, signal=9):
 
 @csrf_exempt
 def historical_data(request):
-    print("[HISTORICAL DATA] Request received.")
-    ticker = request.GET.get('ticker')
-    # timeframe = request.GET.get('timeframe', '1y')
 
+    ticker = request.GET.get('ticker')
+
+    # flags for indicators
     include_rsi = request.GET.get('rsi') == 'true'
     include_macd = request.GET.get('macd') == 'true'
     include_ema50 = request.GET.get('ema50') == 'true'
     include_ema100 = request.GET.get('ema100') == 'true'
     include_ema200 = request.GET.get('ema200') == 'true'
 
-    print(include_ema50)
-
 
     if not ticker:
-        print("[HISTORICAL DATA] No ticker provided.")
         return JsonResponse({'error': 'Missing ticker parameter'}, status=400)
 
     try:
-        print(f"[HISTORICAL DATA] Fetching data for ticker: {ticker}")
-        data_raw = yf.download(ticker, period="5y", interval='1d', group_by='ticker')
+        data_raw = yf.download(ticker, period="5y", interval='1d', group_by='ticker', auto_adjust=True)
 
+        # handling MultiIndex structure
         if isinstance(data_raw.columns, pd.MultiIndex):
             if ticker in data_raw.columns.get_level_values(0):
                 data = data_raw.xs(ticker, axis=1, level=0)
@@ -228,9 +258,14 @@ def historical_data(request):
             return JsonResponse({'error': 'No data found for ticker'}, status=404)
         
         close = data['Close']
+        latest_price = data['Close'].iloc[-1]
 
-        latest_price = data['Close'][-1]
-
+        # computing price change
+        value_change_7d = price_change(data['Close'].iloc[-8], latest_price)
+        value_change_30d = price_change(data['Close'].iloc[-31], latest_price)
+        value_change_1y = price_change(data['Close'].iloc[-366], latest_price)
+        
+        # adding technical indicators
         if include_rsi:
             data['RSI'] = calculate_rsi(close)
         if include_macd:
@@ -245,6 +280,7 @@ def historical_data(request):
         if include_ema200:
             data['EMA200'] = calculate_ema(close, 200)
 
+        # formatting
         formatted = []
         for date, row in data.iterrows():
             if pd.isna(row['Open']) or pd.isna(row['High']) or pd.isna(row['Low']) or pd.isna(row['Close']):
@@ -262,7 +298,7 @@ def historical_data(request):
                 'close': round(row['Close'], 2),
                 'volume': int(row['Volume']) if not pd.isna(row['Volume']) else 0,
             }
-
+            
             if include_rsi and not pd.isna(row['RSI']):
                 candle['rsi'] = round(row['RSI'], 2)
             if include_macd and not pd.isna(row['MACD']) and not pd.isna(row['MACD_Signal']):
@@ -278,15 +314,106 @@ def historical_data(request):
 
             formatted.append(candle)
         
-        print(data)
-        print(formatted)
 
         print(f"[HISTORICAL DATA] Successfully fetched {len(formatted)} rows")
 
-        print("Latest price:", latest_price)
-        return JsonResponse({'data': formatted, 'latest_price': latest_price})
+        return JsonResponse({'data': formatted,
+                             'latest_price': latest_price, 
+                             'value_change': {
+                                '7D': value_change_7d,
+                                '30D': value_change_30d,
+                                '1Y': value_change_1y,
+                              }
+        })
 
     except Exception as e:
         print(f"[HISTORICAL DATA] Error: {str(e)}")
         return JsonResponse({'error': f'Failed to fetch data: {str(e)}'}, status=500)
+
+
+
+# loading API keys and initializing sentiment analyzer
+load_dotenv()
+api_key = os.getenv("NEWSAPI")
+analyzer = SentimentIntensityAnalyzer()
+
+
+
+@csrf_exempt
+def get_news(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Only POST method allowed'}, status=405)
+
+    try:
+        data = json.loads(request.body)
+        assets = data.get('assets', [])
+
+        tickers = []
+        meta_data = {}
+
+        # extract valid tickers and metadata
+        for asset in assets:
+            ticker = asset.get('ticker')
+            name = asset.get('name', '')
+            shares = float(asset.get('amount', 0))
+            if not ticker or shares <= 0:
+                continue
+            tickers.append(ticker.upper())
+            meta_data[ticker.upper()] = name.lower()
+
+        if not tickers:
+            return JsonResponse({'error': 'No valid tickers provided'}, status=400)
+
+        # building query
+        query = ' OR '.join(tickers)
+        from_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+
+        url = (
+            f'https://newsapi.org/v2/everything?q={query}&from={from_date}'
+            f'&sortBy=publishedAt&language=en&apiKey={api_key}'
+        )
+
+        response = requests.get(url)
+        response.raise_for_status()
+        articles = response.json().get('articles', [])
+
+        results = []
+        sentiment_scores = []
+
+        # analyzing each article for sentiment
+        for article in articles:
+            title = article.get('title') or ''
+            description = article.get('description') or ''
+            full_text = f"{title} {description}".lower()
+
+            matched_assets = []
+            for ticker in tickers:
+                ticker_lower = ticker.split('-')[0].lower()
+                if ticker_lower in full_text:
+                    matched_assets.append(ticker)
+
+            if not matched_assets:
+                matched_assets = ['General']
+
+            sentiment = analyzer.polarity_scores(full_text)
+            article['matched_assets'] = matched_assets
+            article['sentiment'] = sentiment
+
+            sentiment_scores.append(sentiment['compound'])
+            results.append(article)
+
+        if sentiment_scores:
+            average_sentiment = sum(sentiment_scores) / len(sentiment_scores)
+        else:
+            average_sentiment = 0.0
+
+        return JsonResponse({
+            'articles': results,
+            'overall_sentiment': average_sentiment
+        })
+
+    except Exception as e:
+        print(f"Error: {str(e)}")
+        return JsonResponse({'error': f'Failed to fetch data: {str(e)}'}, status=500)
+
 

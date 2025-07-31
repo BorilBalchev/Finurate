@@ -29,4 +29,6 @@ yarn-error.log*
 /backend/api/__pycache__
 /backend/crud/__pycache__
 
+/backend/.env
+
 **/migrations

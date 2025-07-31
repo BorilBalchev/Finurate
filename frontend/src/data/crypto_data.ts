@@ -1,9 +1,3 @@
-// export interface CryptoInfo {
-//   ticker: string;
-//   name: string;
-//   sector: string;
-// }
-
 export const topCryptos = [
   { ticker: "BTC", name: "Bitcoin", sector: "Network / Store of Value" },
   { ticker: "ETH", name: "Ethereum", sector: "Network / Smart Contracts" },

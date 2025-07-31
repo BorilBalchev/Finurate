@@ -16,18 +16,18 @@ import ListItemButton from '@mui/material/ListItemButton';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 
-import FinchIcon from './../../assets/Finch2.png'
+import FinchIcon from './../../assets/NavbarLogo.png'
 import { Link } from 'react-router-dom';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
 import Collapse from '@mui/material/Collapse';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
-import TipsAndUpdatesIcon from '@mui/icons-material/TipsAndUpdates';
+import NewspaperIcon from '@mui/icons-material/Newspaper';
 
 import { Avatar, Menu, MenuItem } from '@mui/material';
 import { useState } from 'react';
-import { auth } from '../../firebase';
+import { auth } from '../../utils/firebase';
 
 const drawerWidth = 240;
 
@@ -157,7 +157,7 @@ export default function Navbar({content}: NavbarProps) {
             />
           </Link>
           <Typography variant="h5" noWrap component="div" sx={{ fontFamily: 'Montserrat, sans-serif', fontWeight: 600, color: fontColor }}>
-            Your Investments. Our Intelligence. Perfectly Tailored.
+            Curate Your Financial Edge
           </Typography>
           <Box sx={{ marginLeft: 'auto' }}>
             {auth.currentUser && (
@@ -225,22 +225,20 @@ export default function Navbar({content}: NavbarProps) {
             </ListItemButton>
             <Collapse in={manageOpen} timeout="auto" unmountOnExit>
                 <List component="div" disablePadding>
-                <ListItemButton sx={{ pl: 4, color: fontColor, '&:hover': { backgroundColor: '#333' }}} component={Link} to="/add/stocks">
+                <ListItemButton sx={{ pl: 4, color: fontColor, '&:hover': { backgroundColor: '#333' }}} component={Link} to="/add/stock">
                     <ListItemText primary="Stocks" sx={{ml:5}} />
                 </ListItemButton>
                 <ListItemButton sx={{ pl: 4, color: fontColor, '&:hover': { backgroundColor: '#333' }}} component={Link} to="/add/crypto">
                     <ListItemText primary="Crypto" sx={{ml:5}} />
                 </ListItemButton>
-                <ListItemButton sx={{ pl: 4, color: fontColor, '&:hover': { backgroundColor: '#333' }}} component={Link} to="/add/commodities">
-                    <ListItemText primary="Commodities" sx={{ml:5}} />
-                </ListItemButton>
                 </List>
             </Collapse>
-            <ListItemButton component={Link} to="/ai" sx={{borderTop: '10px solid ' + border}}>
+
+            <ListItemButton component={Link} to="/news" sx={{borderTop: '10px solid ' + border}} >
                 <ListItemIcon sx={{color: fontColor}}>
-                <TipsAndUpdatesIcon/>
+                <NewspaperIcon/>
                 </ListItemIcon>
-                <ListItemText primary="AI Assistant" />
+                <ListItemText primary="News" />
             </ListItemButton>
         </List>
       </Drawer>

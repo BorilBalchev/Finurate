@@ -6,14 +6,12 @@ import Portfolio from './components/Portfolio'
 import Asset from './components/Asset'
 import LoggedInLayout from './components/layouts/LoggedInLayout'
 
-import Stocks from './components/Stocks'
-import Crypto from './components/Crypto'
-import Commodities from './components/Commodities'
-
-import { createTheme, CssBaseline, ThemeProvider } from '@mui/material'
+import { CircularProgress, createTheme, CssBaseline, ThemeProvider } from '@mui/material'
 
 import { useAuthState } from 'react-firebase-hooks/auth';
-import { auth } from './firebase';
+import { auth } from './utils/firebase';
+import NewAsset from './components/NewAsset'
+import News from './components/News'
 
 
 interface MyComponentProps {
@@ -23,7 +21,7 @@ interface MyComponentProps {
 const PrivateRoute = ({ children }: MyComponentProps) => {
     const [user, loading] = useAuthState(auth);
 
-    if (loading) return <div>Loading...</div>;
+    if (loading) return <div className="content" style={{width: '100vw', height: '100vh', display: 'flex', justifyContent: 'center', alignItems: 'center', marginTop: -100}}><CircularProgress/></div>;
     if (!user) return <Navigate to="/"/>;
 
     return children
@@ -61,13 +59,10 @@ function App() {
         {/* Routes with Navbar */}
         <Route element={<PrivateRoute><LoggedInLayout/></PrivateRoute>}>
             <Route path="/portfolio" element={<Portfolio/>}/>
-            <Route path="/portfolio/asset/:id" element={<Asset/>}/>
-            <Route path="/portfolio/news" element={<Asset/>}/>
-            <Route path="/add/stocks" element={<Stocks/>}/>
-            <Route path="/add/crypto" element={<Crypto/>}/>
-            <Route path="/add/commodities" element={<Commodities/>}/>
-            
             <Route path="/asset" element={<Asset />} />
+            <Route path="/add/stock" element={<NewAsset/>}/>
+            <Route path="/add/crypto" element={<NewAsset/>}/>
+            <Route path='news' element={<News/>}></Route>
         </Route>
       </Routes>
     </>

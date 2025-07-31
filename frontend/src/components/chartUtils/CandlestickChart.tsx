@@ -12,6 +12,7 @@ import {
   HistogramSeries,
 } from 'lightweight-charts';
 
+
 interface CandleDataWithVolume {
   time: Time;
   open: number;
@@ -34,7 +35,6 @@ interface Props {
   showMACD: boolean;
 }
 
-
 const formatTime = (time: Time): string => {
   if (typeof time === 'number') {
     return new Date(time * 1000).toLocaleDateString()
@@ -47,10 +47,12 @@ const formatTime = (time: Time): string => {
 }
 
 const ChartPanel: React.FC<Props> = ({ data, showRSI, showMACD }) => {
+  // refs for chart containers
   const candleRef = useRef<HTMLDivElement>(null);
   const rsiRef = useRef<HTMLDivElement>(null);
   const macdRef = useRef<HTMLDivElement>(null);
 
+  // refs to hold chart instances
   const candleChartRef = useRef<IChartApi | null>(null);
   const rsiChartRef = useRef<IChartApi | null>(null);
   const macdChartRef = useRef<IChartApi | null>(null);
@@ -81,7 +83,8 @@ const ChartPanel: React.FC<Props> = ({ data, showRSI, showMACD }) => {
         scaleMargins: { top: 0.7, bottom: 0 },
       },
     };
-
+    
+    // main candlestick chart
     const candleChart = createChart(candleRef.current, {
       width: candleRef.current.clientWidth,
       height: 300,
@@ -91,9 +94,18 @@ const ChartPanel: React.FC<Props> = ({ data, showRSI, showMACD }) => {
 
     const candlestickSeries = candleChart.addSeries(CandlestickSeries,{
       priceLineVisible: false,
+      priceFormat: {
+        type: 'custom',
+        formatter: (price: number) =>
+        price.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }),
+      }, 
     });
     candlestickSeries.setData(data);
 
+    // volume histogram on the left price scale
     const volumeSeries = candleChart.addSeries(HistogramSeries,{
       priceScaleId: 'left',
       color: '#23446bff',
@@ -107,6 +119,7 @@ const ChartPanel: React.FC<Props> = ({ data, showRSI, showMACD }) => {
       }))
     );
 
+    // adding EMA lines
     const addEMASeries = (key: keyof CandleDataWithVolume, color: string) => {
       const series = candleChart.addSeries(LineSeries, {
         color,
@@ -142,6 +155,7 @@ const ChartPanel: React.FC<Props> = ({ data, showRSI, showMACD }) => {
       })));
     }
 
+    // MACD
     let macdSeries: ISeriesApi<'Line'> | null = null;
     if (showMACD && macdRef.current) {
       const macdChart = createChart(macdRef.current, {
@@ -151,15 +165,25 @@ const ChartPanel: React.FC<Props> = ({ data, showRSI, showMACD }) => {
       });
       macdChartRef.current = macdChart;
 
+      // adding MACD line
       macdSeries = macdChart.addSeries(LineSeries,{
         color: '#3c47e7ff',
         lineWidth: 2,
+        priceFormat: {
+        type: 'custom',
+        formatter: (price: number) =>
+        price.toLocaleString(undefined, {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          }),
+        }, 
       });
       macdSeries.setData(data.filter(d => d.macd !== undefined).map(d => ({
         time: d.time,
         value: d.macd!,
       })));
-
+      
+      // adding MACD signal line
       const macdSignalSeries = macdChart.addSeries(LineSeries,{
         color: '#e74c3c',
         lineWidth: 2,
@@ -167,36 +191,46 @@ const ChartPanel: React.FC<Props> = ({ data, showRSI, showMACD }) => {
       macdSignalSeries.setData(data.filter(d => d.macd_signal !== undefined).map(d => ({
         time: d.time,
         value: d.macd_signal!,
-    })));
+      })));
 
-    macdChart.priceScale('left').applyOptions({
-    scaleMargins: { top: 0.3, bottom: 0.3 },
-    borderVisible: false,
-    });
+      macdChart.priceScale('left').applyOptions({
+        scaleMargins: { top: 0.3, bottom: 0.3 },
+        borderVisible: false,
+      });
 
-    const histogramSeries = macdChart.addSeries(HistogramSeries, {
-    priceScaleId: 'left',
-    base: 0,
-    color: '#7f8c8d',
-    priceLineVisible: false,
-    });
+      // adding MACD histogram
+      const histogramSeries = macdChart.addSeries(HistogramSeries, {
+        priceScaleId: 'left',
+        base: 0,
+        color: '#7f8c8d',
+        priceLineVisible: false,
+        priceFormat: {
+            type: 'custom',
+            formatter: (price: number) =>
+            price.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+            }),
+        }, 
+      });
 
-    const histogramData = data
-    .filter(d => d.macd !== undefined && d.macd_signal !== undefined)
-    .map(d => {
-        const diff = d.macd! - d.macd_signal!;
-        return {
-        time: d.time,
-        value: diff,
-        color: diff >= 0 ? 'rgba(46, 204, 113, 0.5)' : 'rgba(231, 76, 60, 0.5)',
-        };
-    });
+      const histogramData = data
+      .filter(d => d.macd !== undefined && d.macd_signal !== undefined)
+      .map(d => {
+          const diff = d.macd! - d.macd_signal!;
+          return {
+          time: d.time,
+          value: diff,
+          color: diff >= 0 ? 'rgba(46, 204, 113, 0.5)' : 'rgba(231, 76, 60, 0.5)',
+          };
+      });
 
-    histogramSeries.setData(histogramData);
+      histogramSeries.setData(histogramData);
 
 
     }
 
+    // synchronizing the time range
     const syncCharts = (sourceChart: IChartApi, targetCharts: IChartApi[]) => {
       sourceChart.timeScale().subscribeVisibleTimeRangeChange((range) => {
         if (!range) return;
@@ -216,12 +250,12 @@ const ChartPanel: React.FC<Props> = ({ data, showRSI, showMACD }) => {
       showMACD ? macdChartRef.current : null,
     ].filter(Boolean) as IChartApi[];
 
-
     allCharts.forEach(source => {
       const targets = allCharts.filter(c => c !== source);
       syncCharts(source, targets);
     });
 
+    // synchronizing crosshair movement
     const syncCrosshair = <
       SourceSeriesType extends keyof SeriesOptionsMap,
       TargetSeriesType extends keyof SeriesOptionsMap
@@ -255,6 +289,7 @@ const ChartPanel: React.FC<Props> = ({ data, showRSI, showMACD }) => {
       setTooltipData(candle || {});
     });
 
+    // resizing charts on window resize
     const handleResize = () => {
       const width = candleRef.current ? candleRef.current.clientWidth : 0;
       candleChart.resize(width, 300);
@@ -296,8 +331,9 @@ const ChartPanel: React.FC<Props> = ({ data, showRSI, showMACD }) => {
           }}
         >
           <div><strong>{formatTime(tooltipData.time)}</strong></div>
-          <div>Close: {tooltipData.close?.toFixed(2)}</div>
-          <div>Volume: {tooltipData.volume?.toLocaleString()}</div>
+          {/* <div>Close: {tooltipData.close?.toFixed(2)}</div> */}
+          <div>Close: ${tooltipData.close?.toLocaleString()}</div>
+          <div>Volume: ${tooltipData.volume?.toLocaleString()}</div>
           {showRSI && <div>RSI: {tooltipData.rsi?.toLocaleString()}</div>}
           {showMACD && <div>MACD Line: {tooltipData.macd?.toLocaleString()}</div>}
           {showMACD && <div>MACD Signal: {tooltipData.macd_signal?.toLocaleString()}</div>}

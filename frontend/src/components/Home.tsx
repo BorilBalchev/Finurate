@@ -1,19 +1,16 @@
 import { Box, Typography, Card, CardContent, Button } from '@mui/material';
-import FinchIcon from "./../assets/Logo4.png";
-import AnalysisIcon from "./../assets/data.png";
-import PortfolioIcon from "./../assets/data-analysis-2.png";
-import NewsIcon from "./../assets/news-2.png";
+import HomeLogo from "./../assets/HomeLogo.png";
+import AnalysisIcon from "./../assets/analysis.png";
+import PortfolioIcon from "./../assets/portfolio.png";
+import NewsIcon from "./../assets/news.png";
 
-import { auth, googleProvider } from '../firebase';
+import { auth, googleProvider } from '../utils/firebase';
 import { signInWithPopup } from 'firebase/auth';
 import { createUserProfile } from '../utils/createUserProfile';
 
 import { useNavigate } from 'react-router-dom';
-
-
-// const navigate = useNavigate();
-
-// import images
+import { useAuth } from '../utils/useAuth';
+import { useEffect } from 'react';
 
 const cards = [
     {
@@ -34,17 +31,24 @@ const cards = [
 ]
 
 const Home = () => {
+    const { user } = useAuth();
     const navigate = useNavigate();
     const handleGoogleLogin = async () => {
         try {
         const result = await signInWithPopup(auth, googleProvider);
         const user = result.user;
-        navigate('/portfolio');
         await createUserProfile(user);
         } catch (error) {
         console.error("Google Sign-In error:", error);
         }
     };
+
+    useEffect(() => {
+        if (user) {
+            navigate('/portfolio')
+        }
+    })
+
   return (
     <Box
       sx={{
@@ -74,7 +78,7 @@ const Home = () => {
         >
             <Box
             component="img"
-            src={FinchIcon}
+            src={HomeLogo}
             alt="Finch Logo"
             sx={{
                 height: 150,
@@ -104,7 +108,7 @@ const Home = () => {
             fontWeight={800}
             sx={{ fontFamily: 'Montserrat, sans-serif' }}
             >
-            Your Finances. Curated with Precision.
+            Curate Your Financial Edge
         </Typography>
       </Box>
       
