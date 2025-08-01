@@ -31,4 +31,7 @@ yarn-error.log*
 
 /backend/.env
 
+/backend/venv
+/backend/venv2
+
 **/migrations
