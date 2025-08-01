@@ -50,12 +50,14 @@ const Portfolio = () => {
     const [valueChange, setValueChange] = useState<Record<string, number>>({});
     const [refresh, setRefresh] = useState(false);
     const [spinning, setSpinning] = useState(false);
+    const [yMin, setYMin] = useState(0);
+    const [yMax, setYMax] = useState(0);
 
     const navigate = useNavigate()
     const cardRefs = useRef<Record<string, HTMLDivElement | null>>({});
 
     // interval for displaying x-axis labels
-    const SIX_MONTHS = 6;
+    const SIX_MONTHS = 2;
     const createTickLabelInterval = () => {
         let lastShownDate: dayjs.Dayjs | null = null;
 
@@ -105,8 +107,11 @@ const Portfolio = () => {
 
                         const data = await res.json();
                         data.assets.sort((a: ValuedStock, b: ValuedStock) => b.value - a.value);
+                        const values = data.historical_portfolio_value.map((entry: { date: string; value: number }) => entry.value);
                         setAssets(data.assets);
                         setTotal(data.total_value);
+                        setYMin(Math.min(...values) * 0.95);
+                        setYMax(Math.max(...values) * 1.05);
                         setPortfolioHistory(data.historical_portfolio_value);
                         setMetrics(data.metrics);
                         setValueChange(data.value_change)
@@ -343,6 +348,8 @@ const Portfolio = () => {
                         tickLabelInterval: createTickLabelInterval(),
                         }]}
                         yAxis={[{
+                        min: yMin,
+                        max: yMax,
                         valueFormatter: (value: number) => {
                             if (value === 0) return '';
                             if (value >= 1_000_000_000_000) return `$${(value / 1_000_000_000_000).toFixed(0)}T`;

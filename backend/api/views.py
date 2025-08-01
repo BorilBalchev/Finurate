@@ -53,7 +53,9 @@ def portfolio_prices(request):
             return JsonResponse({'error': 'No valid tickers provided'}, status=400)
         
         # fetching historical technical data
-        prices_data = yf.download(tickers if len(tickers) > 1 else tickers[0], period="5y", interval='1d', auto_adjust=True)
+        prices_data = yf.download(tickers if len(tickers) > 1 else tickers[0], period="1y", interval='1d', auto_adjust=True)
+        # metric_data = prices_data[-366:]
+        # print(metric_data)
 
         total_value = 0.0
         details = []
@@ -135,11 +137,11 @@ def portfolio_prices(request):
         value_change_30d = price_change(historical_portfolio_value[-31]['value'], current_price)
         value_change_1y = price_change(historical_portfolio_value[-366]['value'], current_price)
         
-        # computing portfolio performance metrics
-        growth = (total_value - portfolio_value_series.iloc[0]) / portfolio_value_series.iloc[0] * 100
+        # computing portfolio performance metrics for the past year
+        growth = (portfolio_value_series.iloc[-1] / portfolio_value_series.iloc[0] - 1) * 100
         daily_returns = portfolio_value_series.pct_change().dropna()
         volatility = daily_returns.std() * 100
-        risk = daily_returns.std() * np.sqrt(252) * 100  
+        risk = daily_returns.std() * np.sqrt(365) * 100
 
         # computing portfolio diversification taking sectors into account
         sector_values = {}
@@ -170,7 +172,8 @@ def portfolio_prices(request):
         liquidity_score = round(liquidity_score, 2)
 
         # scaling
-        scaled_growth = scale_value(round(growth, 2), 0, 300)
+        print(growth)
+        scaled_growth = scale_value(round(growth, 2), 0, 50)
         scaled_volatility = scale_value(round(volatility, 2), 0, 5)
         scaled_risk = scale_value(round(risk, 2), 0, 100)
         scaled_liquidity = scale_value(math.log10(liquidity_score), 6, 11)
