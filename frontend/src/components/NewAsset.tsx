@@ -18,6 +18,10 @@ interface General_Asset {
     sector: string
 }
 
+function wait(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
 const NewAsset = () => {
 
     const location = useLocation();
@@ -89,6 +93,8 @@ const NewAsset = () => {
         console.error("Error saving:", error);
         setMessage(`Failed to add the requested ${assetTypeName}.`);
         }
+        await wait(2000);
+        setMessage('')
     };
 
     useEffect(() => {

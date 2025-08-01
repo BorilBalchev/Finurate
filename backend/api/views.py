@@ -54,8 +54,6 @@ def portfolio_prices(request):
         
         # fetching historical technical data
         prices_data = yf.download(tickers if len(tickers) > 1 else tickers[0], period="1y", interval='1d', auto_adjust=True)
-        # metric_data = prices_data[-366:]
-        # print(metric_data)
 
         total_value = 0.0
         details = []
@@ -172,7 +170,6 @@ def portfolio_prices(request):
         liquidity_score = round(liquidity_score, 2)
 
         # scaling
-        print(growth)
         scaled_growth = scale_value(round(growth, 2), 0, 50)
         scaled_volatility = scale_value(round(volatility, 2), 0, 5)
         scaled_risk = scale_value(round(risk, 2), 0, 100)
@@ -369,10 +366,11 @@ def get_news(request):
 
         # building query
         query = ' OR '.join(tickers)
-        from_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+        from_date = (datetime.now() - timedelta(days=31)).strftime('%Y-%m-%d')
 
         url = (
             f'https://newsapi.org/v2/everything?q={query}&from={from_date}'
+            f'&pageSize=100'
             f'&sortBy=publishedAt&language=en&apiKey={api_key}'
         )
 
@@ -385,18 +383,26 @@ def get_news(request):
 
         # analyzing each article for sentiment
         for article in articles:
+            if not article.get('urlToImage'):
+                continue
+            if article.get('source').get('name') == 'Biztoc.com':
+                continue
+
             title = article.get('title') or ''
             description = article.get('description') or ''
-            full_text = f"{title} {description}".lower()
+            text = article.get('content') or ''
+            full_text = f"{title} {description} {text}".lower()
 
             matched_assets = []
             for ticker in tickers:
+                name_lower = meta_data[ticker]
                 ticker_lower = ticker.split('-')[0].lower()
-                if ticker_lower in full_text:
+                if ticker_lower in full_text or name_lower in full_text:
                     matched_assets.append(ticker)
 
             if not matched_assets:
-                matched_assets = ['General']
+                articles.remove(article)
+                continue
 
             sentiment = analyzer.polarity_scores(full_text)
             article['matched_assets'] = matched_assets
