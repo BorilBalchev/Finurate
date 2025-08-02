@@ -2,6 +2,9 @@
 A full-stack portfolio analytics platform for tracking and evaluating assets across stocks and cryptocurrencies - featuring 
 real-time price updates, technical indicators, portfolio-level metrics, and sentiment analysis of financial news.
 
+## Demo
+https://github.com/user-attachments/assets/368b6f27-fd08-41d0-ac73-b46643fd4679
+
 ## Features
 - **Real-Time Portfolio Tracking**  
   Tracks live prices and percent changes for individual stocks, cryptocurrencies, and the overall portfolio using yfinance.
