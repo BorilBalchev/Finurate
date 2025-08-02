@@ -467,7 +467,7 @@ const Portfolio = () => {
                                                 <Typography variant="subtitle2" color="text.secondary">
                                                     {asset.name}
                                                 </Typography>
-                                                <Typography variant="subtitle2">{asset.shares.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 })} shares</Typography>
+                                                <Typography variant="subtitle2">{asset.shares.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 })} units</Typography>
                                             </Box>
                                             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                                 <Typography>

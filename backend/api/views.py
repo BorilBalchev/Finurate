@@ -103,6 +103,7 @@ def portfolio_prices(request):
                 weighted_list.append(weighted_series)
 
             except Exception as e:
+                print(e)
                 details.append({
                     'ticker': ticker,
                     'name': shares_map.get(ticker, ['', None])[1],
@@ -133,7 +134,7 @@ def portfolio_prices(request):
         current_price = total_value
         value_change_7d = price_change(historical_portfolio_value[-8]['value'], current_price)
         value_change_30d = price_change(historical_portfolio_value[-31]['value'], current_price)
-        value_change_1y = price_change(historical_portfolio_value[-366]['value'], current_price)
+        value_change_1y = price_change(historical_portfolio_value[0]['value'], current_price)
         
         # computing portfolio performance metrics for the past year
         growth = (portfolio_value_series.iloc[-1] / portfolio_value_series.iloc[0] - 1) * 100
@@ -197,6 +198,7 @@ def portfolio_prices(request):
         return JsonResponse(json.loads(json.dumps(response_data, default=str)), safe=False)
 
     except Exception as e:
+        print("Error:", e)
         return JsonResponse({'error': f'Internal Server Error: {str(e)}'}, status=500)
 
 

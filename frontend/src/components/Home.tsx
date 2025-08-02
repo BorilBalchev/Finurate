@@ -20,7 +20,7 @@ const cards = [
     },
     {
         title: 'Advanced Technical Analysis',
-        description: 'Access real-time indicators and trading strategies for all your stocks, crypto, and commodities',
+        description: 'Access real-time indicators and trading strategies for all your stocks and cryptocurrencies',
         image: AnalysisIcon
     },
     {
