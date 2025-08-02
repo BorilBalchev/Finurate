@@ -3,7 +3,7 @@ A full-stack portfolio analytics platform for tracking and evaluating assets acr
 real-time price updates, technical indicators, portfolio-level metrics, and sentiment analysis of financial news.
 
 ## Demo
-https://github.com/user-attachments/assets/368b6f27-fd08-41d0-ac73-b46643fd4679
+https://github.com/user-attachments/assets/796ff092-29cc-4f93-b0ff-bbcf928e7aed
 
 ## Features
 - **Real-Time Portfolio Tracking**  
@@ -66,6 +66,11 @@ https://github.com/user-attachments/assets/368b6f27-fd08-41d0-ac73-b46643fd4679
 
 ## Contributing
 Contributions are what make the open source community such an amazing place to learn, inspire, and create. Any contributions you make are **greatly appreciated**.
+
+## Credits
+- <a href="https://www.flaticon.com/free-icons/business-and-finance" title="business-and-finance icons">Business and Finance icons - Flaticon</a>
+- <a href="https://www.flaticon.com/free-icons/analysis" title="analysis icons">Analysis icons created by monkik - Flaticon</a>
+- <a href="https://www.flaticon.com/free-icons/news" title="news icons">News icons created by Freepik - Flaticon</a>
 
 ## License
 Distributed under the MIT License. See `LICENSE` for more information.
